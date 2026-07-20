@@ -14,6 +14,7 @@ import {
   Home as HomeIcon,
   LogOut,
   Menu,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 import { APP_NAME } from '@/config/app'
@@ -56,6 +57,7 @@ function SidebarContent({
   active: NavKey
   onNavigate?: () => void
 }) {
+  const isAdmin = useAuthStore((state) => state.auth.user?.isAdmin ?? false)
   const linkClass = (key: NavKey) =>
     cn(
       'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
@@ -94,6 +96,19 @@ function SidebarContent({
           <FileText className='size-[18px]' />
           My Updates
         </Link>
+        {isAdmin && (
+          <Link
+            to='/admin'
+            onClick={onNavigate}
+            className={cn(
+              'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
+              'font-medium text-[#64748B] hover:bg-slate-100 dark:text-[#94A3B8] dark:hover:bg-slate-800'
+            )}
+          >
+            <ShieldCheck className='size-[18px]' />
+            Admin
+          </Link>
+        )}
       </nav>
 
       <div className='mt-auto p-4'>
