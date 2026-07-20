@@ -1,0 +1,94 @@
+rules_version = '2';
+
+// Marketing Hub security rules.
+//
+// Three gates, checked on Google's servers (cannot be bypassed by the client):
+//   1. Domain gate   — only verified @codimite.com Google accounts.
+//   2. Approval gate — only users whose users/{uid}.status == 'approved'.
+//   3. Admin gate    — only emails on the allow-list below.
+//
+// Keep the admin allow-list in sync with ADMIN_EMAILS in src/config/app.ts.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isCodimite() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower().matches('.*@codimite[.]com');
+    }
+
+    function isAdmin() {
+      return isCodimite()
+        && request.auth.token.email.lower() in [
+          'pawanya.thrimawithana@codimite.com',
+          'pasindu.wijegunawardhana@codimite.com'
+        ];
+    }
+
+    function isApproved() {
+      return isCodimite()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.status == 'approved';
+    }
+
+    // ── Users ────────────────────────────────────────────────────────────
+    // A user may create their own profile (always as pending/user — they
+    // cannot self-approve or self-promote) and read it. Admins read and
+    // manage everyone.
+    match /users/{userId} {
+      allow read: if isAdmin()
+        || (isCodimite() && request.auth.uid == userId);
+
+      allow create: if isCodimite()
+        && request.auth.uid == userId
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == 'user'
+        && request.resource.data.email == request.auth.token.email.lower();
+
+      // Approve / reject / change role: admins only.
+      allow update: if isAdmin();
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Projects & Categories ───────────────────────────────────────────
+    // Approved users read them (to tag uploads); admins manage them.
+    match /projects/{projectId} {
+      allow read: if isApproved();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if isApproved();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Assets (uploaded file metadata) ──────────────────────────────────
+    match /assets/{assetId} {
+      allow read: if isApproved();
+
+      allow create: if isApproved()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      allow update, delete: if isAdmin()
+        || (isApproved() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // ── Daily updates ────────────────────────────────────────────────────
+    match /updates/{updateId} {
+      allow read: if isApproved();
+
+      allow create: if isApproved()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      allow update, delete: if isAdmin()
+        || (isApproved() && resource.data.ownerUid == request.auth.uid);
+    }
+
+    // Everything else: denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

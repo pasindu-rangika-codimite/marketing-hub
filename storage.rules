@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Marketing Hub — Cloud Storage rules.
+// Files live under assets/{uid}/{assetId}/{fileName}; users write only to
+// their own folder, approved teammates can read, and uploads are capped at
+// 50 MB. Keep the admin allow-list in sync with firestore.rules.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isCodimite() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower().matches('.*@codimite[.]com');
+    }
+
+    function isAdmin() {
+      return isCodimite()
+        && request.auth.token.email.lower() in [
+          'pawanya.thrimawithana@codimite.com',
+          'pasindu.wijegunawardhana@codimite.com'
+        ];
+    }
+
+    function isApproved() {
+      return isCodimite()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+             .data.status == 'approved';
+    }
+
+    match /assets/{ownerUid}/{assetId}/{fileName} {
+      allow read: if isApproved();
+
+      allow write: if isApproved()
+        && request.auth.uid == ownerUid
+        && request.resource.size < 50 * 1024 * 1024;
+
+      allow delete: if isAdmin()
+        || (isApproved() && request.auth.uid == ownerUid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

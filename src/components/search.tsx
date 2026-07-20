@@ -1,0 +1,34 @@
+import { SearchIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useSearch } from '@/context/search-provider'
+import { Button } from './ui/button'
+
+export function Search({
+  className = '',
+  placeholder = 'Search',
+  ...props
+}: React.ComponentProps<'button'> & { placeholder?: string }) {
+  const { setOpen } = useSearch()
+  return (
+    <Button
+      {...props}
+      variant='outline'
+      className={cn(
+        'group relative h-8 w-8 shrink-0 justify-center rounded-md bg-muted/25 text-sm font-normal text-muted-foreground shadow-none hover:bg-accent sm:w-40 sm:justify-start sm:pe-12 md:w-52 lg:w-64',
+        className
+      )}
+      aria-keyshortcuts='Meta+K Control+K'
+      onClick={() => setOpen(true)}
+    >
+      <SearchIcon
+        aria-hidden='true'
+        className='absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2 sm:inset-s-1.5 sm:left-auto sm:translate-x-0'
+        size={16}
+      />
+      <span className='ms-4 hidden sm:inline'>{placeholder}</span>
+      <kbd className='pointer-events-none absolute inset-e-[0.3rem] top-[0.3rem] hidden h-5 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 select-none group-hover:bg-accent sm:flex'>
+        <span className='text-xs'>⌘</span>K
+      </kbd>
+    </Button>
+  )
+}
