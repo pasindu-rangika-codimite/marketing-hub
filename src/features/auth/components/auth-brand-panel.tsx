@@ -21,10 +21,10 @@ export function AuthBrandPanel({ className }: { className?: string }) {
         />
         <div className='min-w-0 pt-0.5'>
           <p className='text-xl leading-tight font-bold text-[#1A1A1A] sm:text-[1.375rem] dark:text-[#F8FAFC]'>
-            Design
+            Codimite
           </p>
           <p className='text-xl leading-tight font-bold text-[#7C3AED] sm:text-[1.375rem] dark:text-[#A78BFA]'>
-            Progress Hub
+            Marketing Hub
           </p>
           <p className='mt-2 text-sm text-[#6B7280] sm:text-[0.95rem] dark:text-[#94A3B8]'>
             {APP_TAGLINE}

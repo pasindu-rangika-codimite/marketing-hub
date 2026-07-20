@@ -49,44 +49,8 @@ const CATEGORIES = [
   { value: 'prototyping', label: 'Prototyping' },
 ] as const
 
-const INITIAL_FILES: UploadedFile[] = [
-  {
-    id: '1',
-    name: 'homepage-hero-design.png',
-    type: 'PNG',
-    size: '2.4 MB',
-    uploadedAt: '10:24 AM',
-    project: 'caprome',
-    category: 'ui-design',
-  },
-  {
-    id: '2',
-    name: 'dashboard-ui-v2.jpg',
-    type: 'JPG',
-    size: '1.9 MB',
-    uploadedAt: '10:38 AM',
-    project: 'commandlyne',
-    category: 'ui-design',
-  },
-  {
-    id: '3',
-    name: 'design-system-guide.pdf',
-    type: 'PDF',
-    size: '2.1 MB',
-    uploadedAt: '10:52 AM',
-    project: 'caprome',
-    category: 'branding',
-  },
-  {
-    id: '4',
-    name: 'weekly-update-slides.pptx',
-    type: 'PPTX',
-    size: '3.6 MB',
-    uploadedAt: '11:05 AM',
-    project: 'commandlyne',
-    category: 'branding',
-  },
-]
+// Starts empty — real files arrive with the Firestore/Storage wiring.
+const INITIAL_FILES: UploadedFile[] = []
 
 function ProjectDot({ value }: { value: string }) {
   const project = PROJECTS.find((p) => p.value === value)
@@ -199,6 +163,12 @@ export function MyUpdatesPage() {
               <Button
                 type='button'
                 variant='outline'
+                onClick={() =>
+                  toast.info('Uploads are coming soon', {
+                    description:
+                      'File storage is being set up. You will be able to add files here shortly.',
+                  })
+                }
                 className={cn(
                   'h-10 rounded-xl border-[#7C3AED] bg-white text-sm font-semibold text-[#7C3AED]',
                   'hover:bg-violet-50 dark:border-violet-400 dark:bg-transparent dark:text-violet-300',

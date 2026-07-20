@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { addDays, format, isBefore, isSameDay, startOfWeek } from 'date-fns'
 import {
   Check,
   Clock3,
@@ -10,6 +11,7 @@ import {
   Upload,
   UploadCloud,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,43 +21,65 @@ import {
   WEEK_LABEL,
   WEEK_RANGE,
 } from './progress-hub-shell'
-import { UploadPanel } from './upload-panel'
 
+// Real counts arrive with the Firestore wiring (uploads/updates phases).
 const STATS = [
   {
     label: 'Updates Added',
-    value: 4,
+    value: 0,
     icon: ListChecks,
     iconClass:
       'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
   },
   {
     label: 'Projects Tagged',
-    value: 3,
+    value: 0,
     icon: FolderKanban,
     iconClass:
       'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
   },
   {
     label: 'Files Uploaded',
-    value: 6,
+    value: 0,
     icon: Paperclip,
     iconClass: 'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
   },
 ] as const
 
-const WEEK_DAYS = [
-  { day: 'Mon 22', status: 'done' as const, detail: '1 update' },
-  { day: 'Tue 23', status: 'done' as const, detail: '1 update' },
-  { day: 'Wed 24', status: 'empty' as const, detail: '0 updates' },
-  { day: 'Thu 25', status: 'done' as const, detail: '2 updates' },
-  { day: 'Fri 26', status: 'pending' as const, detail: 'Pending' },
-]
+type WeekDayStatus = 'done' | 'empty' | 'pending'
+
+const WEEK_DAYS: { day: string; status: WeekDayStatus; detail: string }[] =
+  (() => {
+    const today = new Date()
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+    return Array.from({ length: 5 }, (_, index) => {
+      const day = addDays(weekStart, index)
+      if (isSameDay(day, today)) {
+        return {
+          day: format(day, 'EEE d'),
+          status: 'pending' as const,
+          detail: 'Today',
+        }
+      }
+      return {
+        day: format(day, 'EEE d'),
+        status: 'empty' as const,
+        detail: isBefore(day, today) ? '0 updates' : '—',
+      }
+    })
+  })()
+
+// Placeholder until real uploads land (needs the Blaze plan for Storage).
+function showComingSoon() {
+  toast.info('Uploads are coming soon', {
+    description:
+      'File storage is being set up. You will be able to add updates here shortly.',
+  })
+}
 
 export function HomePage() {
   const [linkValue, setLinkValue] = useState('')
   const [noteValue, setNoteValue] = useState('')
-  const [uploadOpen, setUploadOpen] = useState(false)
 
   return (
     <ProgressHubShell
@@ -63,7 +87,6 @@ export function HomePage() {
       title="This Week's Updates"
       subtitle={`${WEEK_LABEL} • ${WEEK_RANGE}`}
     >
-      <UploadPanel open={uploadOpen} onClose={() => setUploadOpen(false)} />
       <p className='mb-6 text-sm text-[#64748B] sm:mb-8 dark:text-[#94A3B8]'>
         Add your design updates for this week.
       </p>
@@ -119,7 +142,7 @@ export function HomePage() {
               <button
                 type='button'
                 className='font-semibold text-[#7C3AED] underline-offset-2 hover:underline dark:text-violet-300'
-                onClick={() => setUploadOpen(true)}
+                onClick={showComingSoon}
               >
                 browse
               </button>{' '}
@@ -132,7 +155,7 @@ export function HomePage() {
 
           <Button
             type='button'
-            onClick={() => setUploadOpen(true)}
+            onClick={showComingSoon}
             className={cn(
               'mt-5 h-11 w-full rounded-xl text-sm font-semibold text-white shadow-none',
               'bg-[#7C3AED] hover:bg-[#6D28D9]'
@@ -179,6 +202,7 @@ export function HomePage() {
           <div className='mt-5 flex justify-end'>
             <Button
               type='button'
+              onClick={showComingSoon}
               className={cn(
                 'h-10 rounded-xl px-5 text-sm font-semibold text-white shadow-none',
                 'bg-[#7C3AED] hover:bg-[#6D28D9]'

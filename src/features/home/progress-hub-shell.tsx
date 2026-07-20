@@ -1,22 +1,51 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
+import {
+  endOfWeek,
+  format,
+  getISODay,
+  getISOWeek,
+  startOfWeek,
+} from 'date-fns'
 import {
   CalendarDays,
   ChevronDown,
   FileText,
   Home as HomeIcon,
+  LogOut,
   Menu,
   X,
 } from 'lucide-react'
 import { APP_NAME } from '@/config/app'
-import { cn } from '@/lib/utils'
+import { signOutUser } from '@/lib/firebase'
+import { cn, getDisplayNameInitials } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 import { PlaceholderImage } from '@/components/placeholder-image'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-export const WEEK_LABEL = 'Week 26'
-export const WEEK_RANGE = 'Jun 22 – Jun 28, 2026'
-const SELECTED_DATE = 'Thu, Jun 26, 2026'
+const NOW = new Date()
+const WEEK_START = startOfWeek(NOW, { weekStartsOn: 1 })
+const WEEK_END = endOfWeek(NOW, { weekStartsOn: 1 })
+
+export const WEEK_LABEL = `Week ${getISOWeek(NOW)}`
+export const WEEK_RANGE = `${format(WEEK_START, 'MMM d')} – ${format(WEEK_END, 'MMM d, yyyy')}`
+const SELECTED_DATE = format(NOW, 'EEE, MMM d, yyyy')
+
+const DAYS_LEFT_TEXT = (() => {
+  const isoDay = getISODay(NOW)
+  if (isoDay > 5) return 'The work week has ended.'
+  const left = 5 - isoDay + 1
+  return left === 1
+    ? 'Last day to add updates.'
+    : `${left} days left to add updates.`
+})()
 
 type NavKey = 'home' | 'my-updates'
 
@@ -82,11 +111,70 @@ function SidebarContent({
             {WEEK_RANGE}
           </p>
           <p className='mt-2 text-xs font-medium text-[#7C3AED] dark:text-violet-300'>
-            5 days left to add updates.
+            {DAYS_LEFT_TEXT}
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+function UserMenu() {
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.auth.user)
+  const displayName = user?.displayName || 'User'
+  const initials = getDisplayNameInitials(displayName)
+
+  const handleSignOut = async () => {
+    await signOutUser()
+    navigate({ to: '/sign-in' })
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type='button'
+          className={cn(
+            'flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 sm:px-2',
+            'hover:bg-slate-50 dark:hover:bg-slate-800'
+          )}
+        >
+          {user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt={displayName}
+              referrerPolicy='no-referrer'
+              className='size-9 shrink-0 rounded-full object-cover'
+            />
+          ) : (
+            <div
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-full',
+                'bg-[#7C3AED] text-xs font-bold text-white'
+              )}
+            >
+              {initials}
+            </div>
+          )}
+          <div className='hidden min-w-0 text-start md:block'>
+            <p className='truncate text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
+              {displayName}
+            </p>
+            <p className='max-w-[180px] truncate text-xs text-[#64748B] dark:text-[#94A3B8]'>
+              {user?.email ?? ''}
+            </p>
+          </div>
+          <ChevronDown className='hidden size-4 text-slate-400 md:block' />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end' className='min-w-[180px]'>
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut className='size-4' />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -201,31 +289,7 @@ export function ProgressHubShell({
               <ChevronDown className='size-4 text-slate-400' />
             </button>
 
-            <button
-              type='button'
-              className={cn(
-                'flex items-center gap-2.5 rounded-xl px-1.5 py-1.5 sm:px-2',
-                'hover:bg-slate-50 dark:hover:bg-slate-800'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex size-9 shrink-0 items-center justify-center rounded-full',
-                  'bg-[#3B82F6] text-xs font-bold text-white'
-                )}
-              >
-                SN
-              </div>
-              <div className='hidden min-w-0 text-start md:block'>
-                <p className='truncate text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
-                  Subodha N.
-                </p>
-                <p className='truncate text-xs text-[#64748B] dark:text-[#94A3B8]'>
-                  UI/UX Designer
-                </p>
-              </div>
-              <ChevronDown className='hidden size-4 text-slate-400 md:block' />
-            </button>
+            <UserMenu />
           </div>
         </header>
 
