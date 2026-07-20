@@ -178,6 +178,12 @@ export function AdminMembersPage() {
                   const isSelf = member.uid === currentUser?.uid
                   const memberIsAdmin = isAdminEmail(member.email)
                   const isBusy = busyUid === member.uid
+                  // Anyone pending can be approved (even an allow-list
+                  // admin's first sign-in), but admins and yourself can
+                  // never be rejected or disabled.
+                  const canApprove = !isSelf && member.status !== 'approved'
+                  const canReject =
+                    !isSelf && !memberIsAdmin && member.status !== 'rejected'
 
                   return (
                     <tr
@@ -223,11 +229,11 @@ export function AdminMembersPage() {
                         <StatusBadge status={member.status} />
                       </td>
                       <td className='px-4 py-4 text-end sm:px-6'>
-                        {isSelf || memberIsAdmin ? (
+                        {!canApprove && !canReject ? (
                           <span className='text-xs text-[#94A3B8]'>—</span>
                         ) : (
                           <div className='inline-flex items-center gap-2'>
-                            {member.status !== 'approved' && (
+                            {canApprove && (
                               <button
                                 type='button'
                                 disabled={isBusy}
@@ -243,7 +249,7 @@ export function AdminMembersPage() {
                                 Approve
                               </button>
                             )}
-                            {member.status !== 'rejected' && (
+                            {canReject && (
                               <button
                                 type='button'
                                 disabled={isBusy}
