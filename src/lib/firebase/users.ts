@@ -1,13 +1,18 @@
 import {
+  collection,
   doc,
   getDoc,
   onSnapshot,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 import type { User } from 'firebase/auth'
-import type { UserProfile } from '@/types'
+import type { UserProfile, UserStatus } from '@/types'
 import { COLLECTIONS, db } from './firestore'
+
+/** A users/{uid} document together with its id — for admin screens. */
+export type MemberRecord = UserProfile & { uid: string }
 
 export async function getUserProfile(
   uid: string
@@ -58,4 +63,26 @@ export function subscribeToUserProfile(
     },
     () => callback(null)
   )
+}
+
+/** Live list of every user — admin only (enforced by security rules). */
+export function subscribeToAllUsers(
+  callback: (users: MemberRecord[]) => void
+) {
+  return onSnapshot(collection(db, COLLECTIONS.users), (snapshot) => {
+    callback(
+      snapshot.docs.map((d) => ({
+        uid: d.id,
+        ...(d.data() as UserProfile),
+      }))
+    )
+  })
+}
+
+/** Approve or reject a member — admin only (enforced by security rules). */
+export async function setUserStatus(uid: string, status: UserStatus) {
+  await updateDoc(doc(db, COLLECTIONS.users, uid), {
+    status,
+    updatedAt: serverTimestamp(),
+  })
 }

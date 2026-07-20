@@ -10,5 +10,22 @@ export { COLLECTIONS } from './firestore'
 export {
   ensureUserProfile,
   getUserProfile,
+  setUserStatus,
+  subscribeToAllUsers,
   subscribeToUserProfile,
+  type MemberRecord,
 } from './users'
+export {
+  createProject,
+  deleteProject,
+  renameProject,
+  subscribeToProjects,
+} from './projects'
+export {
+  createCategory,
+  createDefaultCategories,
+  deleteCategory,
+  renameCategory,
+  subscribeToCategories,
+  DEFAULT_CATEGORIES,
+} from './categories'

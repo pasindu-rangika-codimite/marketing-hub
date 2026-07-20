@@ -1,146 +1,62 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { format } from 'date-fns'
+import { Timestamp } from 'firebase/firestore'
 import {
-  Bell,
-  Ellipsis,
-  FileText,
-  Monitor,
+  Loader2,
   Pencil,
   Plus,
-  Presentation,
   Search,
-  Share2,
   ShieldCheck,
+  Sparkles,
   Tag,
   Trash2,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import type { Category } from '@/types'
+import {
+  createCategory,
+  createDefaultCategories,
+  deleteCategory,
+  renameCategory,
+} from '@/lib/firebase'
 import { cn } from '@/lib/utils'
+import { useCategories } from '@/hooks/use-live-data'
+import { useAuthStore } from '@/stores/auth-store'
 import { AdminShell } from '@/features/admin/components/admin-shell'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-type CategoryItem = {
-  id: string
-  name: string
-  icon: typeof Monitor
-  iconClass: string
-  description: string
-  createdDate: string
-  status: string
-}
-
-const INITIAL_CATEGORIES: CategoryItem[] = [
-  {
-    id: '1',
-    name: 'UI Design',
-    icon: Monitor,
-    iconClass: 'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '2',
-    name: 'Flyer',
-    icon: FileText,
-    iconClass: 'bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '3',
-    name: 'Branding',
-    icon: Tag,
-    iconClass: 'bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '4',
-    name: 'Social Media',
-    icon: Share2,
-    iconClass: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '5',
-    name: 'Presentation',
-    icon: Presentation,
-    iconClass: 'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '6',
-    name: 'Research',
-    icon: Search,
-    iconClass: 'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
-  {
-    id: '7',
-    name: 'Other',
-    icon: Ellipsis,
-    iconClass: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-    description: '',
-    createdDate: '',
-    status: '',
-  },
+const ICON_CLASSES = [
+  'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
+  'bg-orange-100 text-orange-600 dark:bg-orange-500/20 dark:text-orange-300',
+  'bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-300',
+  'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300',
+  'bg-sky-100 text-sky-600 dark:bg-sky-500/20 dark:text-sky-300',
+  'bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300',
+  'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 ]
 
-function CategorySidebarFooter() {
-  return (
-    <div className='mt-auto p-4'>
-      <div
-        className={cn(
-          'rounded-2xl border border-violet-100 bg-violet-50 p-4',
-          'dark:border-violet-500/20 dark:bg-violet-500/10'
-        )}
-      >
-        <div className='mb-2 flex items-center gap-2'>
-          <Bell className='size-4 text-[#7C3AED] dark:text-violet-300' />
-          <p className='text-sm font-bold text-[#0F172A] dark:text-[#F8FAFC]'>
-            Stay on top!
-          </p>
-        </div>
-        <p className='text-xs leading-relaxed text-[#64748B] dark:text-[#94A3B8]'>
-          Send reminders to members who haven&apos;t added updates yet.
-        </p>
-        <Button
-          type='button'
-          variant='outline'
-          className={cn(
-            'mt-3 h-9 w-full rounded-xl border-[#7C3AED] text-xs font-semibold text-[#7C3AED]',
-            'hover:bg-violet-100 dark:border-violet-400 dark:text-violet-300 dark:hover:bg-violet-500/20'
-          )}
-          onClick={() =>
-            toast.success('Reminder sent', {
-              description: 'Members without updates will be notified.',
-            })
-          }
-        >
-          Send Reminder
-        </Button>
-      </div>
-    </div>
-  )
+function formatCreatedAt(createdAt: unknown): string {
+  if (createdAt instanceof Timestamp) {
+    return format(createdAt.toDate(), 'MMM d, yyyy')
+  }
+  return '—'
 }
 
 export function AdminCategoryPage() {
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES)
+  const { categories, isLoading } = useCategories()
+  const currentUser = useAuthStore((state) => state.auth.user)
+
   const [search, setSearch] = useState('')
   const [panelOpen, setPanelOpen] = useState(false)
+  const [editing, setEditing] = useState<Category | null>(null)
   const [name, setName] = useState('')
-  const [isCreating, setIsCreating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSeeding, setIsSeeding] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -148,49 +64,87 @@ export function AdminCategoryPage() {
     return categories.filter((c) => c.name.toLowerCase().includes(q))
   }, [categories, search])
 
+  const openCreate = () => {
+    setEditing(null)
+    setName('')
+    setPanelOpen(true)
+  }
+
+  const openEdit = (category: Category) => {
+    setEditing(category)
+    setName(category.name)
+    setPanelOpen(true)
+  }
+
   const closePanel = () => {
     setPanelOpen(false)
+    setEditing(null)
     setName('')
   }
 
-  const handleCreate = async (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!name.trim() || isCreating) return
+    const trimmed = name.trim()
+    if (!trimmed || isSaving || !currentUser) return
 
-    setIsCreating(true)
-    await new Promise((r) => setTimeout(r, 600))
-
-    setCategories((prev) => [
-      ...prev,
-      {
-        id: String(Date.now()),
-        name: name.trim(),
-        icon: Tag,
-        iconClass:
-          'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300',
-        description: '',
-        createdDate: '',
-        status: '',
-      },
-    ])
-    toast.success('Category created', { description: name.trim() })
-    setIsCreating(false)
-    closePanel()
+    setIsSaving(true)
+    try {
+      if (editing) {
+        await renameCategory(editing.id, trimmed)
+        toast.success('Category renamed', { description: trimmed })
+      } else {
+        await createCategory(trimmed, currentUser.uid)
+        toast.success('Category created', { description: trimmed })
+      }
+      closePanel()
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save category:', error)
+      toast.error('Could not save category', {
+        description: 'Please try again.',
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleDelete = (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id))
-    toast.message('Category removed')
+  const handleSeedDefaults = async () => {
+    if (isSeeding || !currentUser) return
+    setIsSeeding(true)
+    try {
+      await createDefaultCategories(currentUser.uid)
+      toast.success('Starter categories added')
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to add starter categories:', error)
+      toast.error('Could not add starter categories')
+    } finally {
+      setIsSeeding(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    try {
+      await deleteCategory(deleteTarget.id)
+      toast.message('Category deleted', { description: deleteTarget.name })
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to delete category:', error)
+      toast.error('Could not delete category')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   return (
-    <AdminShell sidebarFooter={<CategorySidebarFooter />}>
+    <AdminShell>
       <div className='mb-6 flex flex-col gap-1 sm:mb-8'>
         <h1 className='text-2xl font-bold tracking-tight text-[#0F172A] sm:text-3xl dark:text-[#F8FAFC]'>
           Category
         </h1>
         <p className='text-sm text-[#64748B] dark:text-[#94A3B8]'>
-          Create and manage categories for weekly team updates.
+          Create and manage the categories members use to organize updates.
         </p>
       </div>
 
@@ -212,7 +166,7 @@ export function AdminCategoryPage() {
           </div>
           <Button
             type='button'
-            onClick={() => setPanelOpen(true)}
+            onClick={openCreate}
             className={cn(
               'h-10 shrink-0 rounded-xl px-4 text-sm font-semibold text-white shadow-none',
               'bg-[#7C3AED] hover:bg-[#6D28D9]'
@@ -223,75 +177,102 @@ export function AdminCategoryPage() {
           </Button>
         </div>
 
-        <div className='overflow-x-auto'>
-          <table className='w-full min-w-[640px] text-sm'>
-            <thead>
-              <tr className='border-b border-slate-100 bg-slate-50/80 text-left text-xs font-medium tracking-wide text-[#64748B] uppercase dark:border-slate-700 dark:bg-slate-800/50 dark:text-[#94A3B8]'>
-                <th className='px-4 py-3 font-medium sm:px-6'>Category</th>
-                <th className='px-4 py-3 font-medium sm:px-6'>Description</th>
-                <th className='px-4 py-3 font-medium sm:px-6'>Created Date</th>
-                <th className='px-4 py-3 font-medium sm:px-6'>Status</th>
-                <th className='px-4 py-3 text-end font-medium sm:px-6'>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className='divide-y divide-slate-100 dark:divide-slate-800'>
-              {filtered.map((category) => (
-                <tr key={category.id}>
-                  <td className='px-4 py-4 sm:px-6'>
-                    <div className='flex items-center gap-3'>
-                      <span
-                        className={cn(
-                          'flex size-9 shrink-0 items-center justify-center rounded-full',
-                          category.iconClass
-                        )}
-                      >
-                        <category.icon className='size-4' />
-                      </span>
-                      <span className='font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
-                        {category.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className='px-4 py-4 text-[#94A3B8] sm:px-6'>
-                    {category.description || '—'}
-                  </td>
-                  <td className='px-4 py-4 text-[#94A3B8] sm:px-6'>
-                    {category.createdDate || '—'}
-                  </td>
-                  <td className='px-4 py-4 text-[#94A3B8] sm:px-6'>
-                    {category.status || '—'}
-                  </td>
-                  <td className='px-4 py-4 text-end sm:px-6'>
-                    <div className='inline-flex items-center gap-3'>
-                      <button
-                        type='button'
-                        className='inline-flex items-center gap-1.5 text-sm font-semibold text-[#3B82F6] hover:underline dark:text-sky-400'
-                      >
-                        <Pencil className='size-3.5' />
-                        Edit
-                      </button>
-                      <button
-                        type='button'
-                        onClick={() => handleDelete(category.id)}
-                        className='inline-flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:underline dark:text-red-400'
-                      >
-                        <Trash2 className='size-3.5' />
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+        {isLoading ? (
+          <div className='flex items-center justify-center px-6 py-16'>
+            <Loader2 className='size-6 animate-spin text-slate-400' />
+          </div>
+        ) : (
+          <div className='overflow-x-auto'>
+            <table className='w-full min-w-[640px] text-sm'>
+              <thead>
+                <tr className='border-b border-slate-100 bg-slate-50/80 text-left text-xs font-medium tracking-wide text-[#64748B] uppercase dark:border-slate-700 dark:bg-slate-800/50 dark:text-[#94A3B8]'>
+                  <th className='px-4 py-3 font-medium sm:px-6'>Category</th>
+                  <th className='px-4 py-3 font-medium sm:px-6'>
+                    Created Date
+                  </th>
+                  <th className='px-4 py-3 font-medium sm:px-6'>Status</th>
+                  <th className='px-4 py-3 text-end font-medium sm:px-6'>
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className='divide-y divide-slate-100 dark:divide-slate-800'>
+                {filtered.map((category, index) => (
+                  <tr key={category.id}>
+                    <td className='px-4 py-4 sm:px-6'>
+                      <div className='flex items-center gap-3'>
+                        <span
+                          className={cn(
+                            'flex size-9 shrink-0 items-center justify-center rounded-full',
+                            ICON_CLASSES[index % ICON_CLASSES.length]
+                          )}
+                        >
+                          <Tag className='size-4' />
+                        </span>
+                        <span className='font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
+                          {category.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className='px-4 py-4 text-[#64748B] sm:px-6 dark:text-[#94A3B8]'>
+                      {formatCreatedAt(category.createdAt)}
+                    </td>
+                    <td className='px-4 py-4 sm:px-6'>
+                      <span className='inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300'>
+                        Active
+                      </span>
+                    </td>
+                    <td className='px-4 py-4 text-end sm:px-6'>
+                      <div className='inline-flex items-center gap-3'>
+                        <button
+                          type='button'
+                          onClick={() => openEdit(category)}
+                          className='inline-flex items-center gap-1.5 text-sm font-semibold text-[#3B82F6] hover:underline dark:text-sky-400'
+                        >
+                          <Pencil className='size-3.5' />
+                          Edit
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() => setDeleteTarget(category)}
+                          className='inline-flex items-center gap-1.5 text-sm font-semibold text-red-500 hover:underline dark:text-red-400'
+                        >
+                          <Trash2 className='size-3.5' />
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-        {filtered.length === 0 && (
-          <p className='px-6 py-12 text-center text-sm text-[#64748B] dark:text-[#94A3B8]'>
-            No categories match your search.
-          </p>
+        {!isLoading && filtered.length === 0 && (
+          <div className='flex flex-col items-center px-6 py-12 text-center'>
+            <p className='text-sm text-[#64748B] dark:text-[#94A3B8]'>
+              {categories.length === 0
+                ? 'No categories yet.'
+                : 'No categories match your search.'}
+            </p>
+            {categories.length === 0 && (
+              <Button
+                type='button'
+                variant='outline'
+                disabled={isSeeding}
+                onClick={handleSeedDefaults}
+                className='mt-4 h-10 rounded-xl px-4 text-sm font-semibold'
+              >
+                {isSeeding ? (
+                  <Loader2 className='size-4 animate-spin' />
+                ) : (
+                  <Sparkles className='size-4' />
+                )}
+                Add starter categories
+              </Button>
+            )}
+          </div>
         )}
 
         <div
@@ -311,6 +292,18 @@ export function AdminCategoryPage() {
         </div>
       </section>
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title={`Delete "${deleteTarget?.name ?? ''}"?`}
+        desc='Members will no longer be able to tag updates with this category.'
+        destructive
+        confirmText='Delete'
+        handleConfirm={handleDelete}
+      />
+
       {panelOpen && (
         <>
           <button
@@ -322,13 +315,13 @@ export function AdminCategoryPage() {
           <div
             role='dialog'
             aria-modal='true'
-            aria-label='Add New Category'
+            aria-label={editing ? 'Edit Category' : 'Add New Category'}
             className={cn(
               'fixed z-50 flex flex-col overflow-hidden bg-white shadow-2xl',
-              'inset-x-3 bottom-3 max-h-[min(520px,calc(100svh-5.5rem))] rounded-2xl',
-              'top-[4.5rem]',
-              'sm:inset-auto sm:top-20 sm:right-5 sm:bottom-5 sm:left-auto',
-              'sm:w-[min(420px,calc(100vw-2.5rem))] sm:max-h-[calc(100svh-6.5rem)]',
+              'inset-x-3 bottom-3 max-h-[min(420px,calc(100svh-5.5rem))] rounded-2xl',
+              'top-auto',
+              'sm:inset-auto sm:top-20 sm:right-5 sm:bottom-auto sm:left-auto',
+              'sm:w-[min(420px,calc(100vw-2.5rem))]',
               'dark:bg-[#1E293B] dark:shadow-black/40',
               'animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-right-4 duration-300'
             )}
@@ -336,10 +329,12 @@ export function AdminCategoryPage() {
             <div className='flex items-start justify-between gap-3 border-b border-slate-100 px-5 py-5 dark:border-slate-700'>
               <div>
                 <h2 className='text-lg font-bold text-[#0F172A] dark:text-[#F8FAFC]'>
-                  Add New Category
+                  {editing ? 'Edit Category' : 'Add New Category'}
                 </h2>
                 <p className='mt-1 text-sm text-[#64748B] dark:text-[#94A3B8]'>
-                  Create a new category to organize weekly updates and content.
+                  {editing
+                    ? 'Rename this category.'
+                    : 'Create a new category to organize updates and content.'}
                 </p>
               </div>
               <button
@@ -353,7 +348,7 @@ export function AdminCategoryPage() {
             </div>
 
             <form
-              onSubmit={handleCreate}
+              onSubmit={handleSubmit}
               className='flex min-h-0 flex-1 flex-col'
             >
               <div className='flex-1 px-5 py-5'>
@@ -384,10 +379,14 @@ export function AdminCategoryPage() {
                 </Button>
                 <Button
                   type='submit'
-                  disabled={isCreating || !name.trim()}
+                  disabled={isSaving || !name.trim()}
                   className='h-11 rounded-xl bg-[#7C3AED] px-5 font-semibold text-white hover:bg-[#6D28D9]'
                 >
-                  {isCreating ? 'Creating...' : 'Create Category'}
+                  {isSaving
+                    ? 'Saving...'
+                    : editing
+                      ? 'Save Changes'
+                      : 'Create Category'}
                 </Button>
               </div>
             </form>

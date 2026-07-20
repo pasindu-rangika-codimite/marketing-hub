@@ -1,25 +1,24 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, CalendarDays, ChevronDown, Filter, Search } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { PlaceholderImage } from '@/components/placeholder-image'
+import { ArrowRight, CalendarDays, Loader2, Search } from 'lucide-react'
+import { cn, getDisplayNameInitials } from '@/lib/utils'
+import { useProjects } from '@/hooks/use-live-data'
 import {
   ADMIN_WEEK_LABEL,
   ADMIN_WEEK_RANGE,
   AdminShell,
 } from '@/features/admin/components/admin-shell'
-import { ADMIN_PROJECTS } from '@/features/admin/data/projects'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export function AdminWeekUpdatesPage() {
+  const { projects, isLoading } = useProjects()
   const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return ADMIN_PROJECTS
-    return ADMIN_PROJECTS.filter((p) => p.name.toLowerCase().includes(q))
-  }, [search])
+    if (!q) return projects
+    return projects.filter((p) => p.name.toLowerCase().includes(q))
+  }, [projects, search])
 
   return (
     <AdminShell>
@@ -43,77 +42,73 @@ export function AdminWeekUpdatesPage() {
           />
         </div>
 
-        <div className='flex shrink-0 items-center gap-2'>
-          <button
-            type='button'
-            className={cn(
-              'flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium',
-              'text-[#334155] hover:bg-slate-50 dark:border-slate-700 dark:bg-[#1E293B] dark:text-[#E2E8F0]',
-              'dark:hover:bg-slate-800'
-            )}
-          >
-            <CalendarDays className='size-4 text-[#7C3AED]' />
-            <span className='hidden truncate sm:inline'>
-              {ADMIN_WEEK_LABEL} • {ADMIN_WEEK_RANGE}
-            </span>
-            <span className='truncate sm:hidden'>{ADMIN_WEEK_LABEL}</span>
-            <ChevronDown className='size-4 text-slate-400' />
-          </button>
-
-          <Button
-            type='button'
-            variant='outline'
-            size='icon'
-            className='size-11 shrink-0 rounded-xl'
-            aria-label='Filter projects'
-          >
-            <Filter className='size-4' />
-          </Button>
+        <div
+          className={cn(
+            'flex h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium',
+            'text-[#334155] dark:border-slate-700 dark:bg-[#1E293B] dark:text-[#E2E8F0]'
+          )}
+        >
+          <CalendarDays className='size-4 text-[#7C3AED]' />
+          <span className='hidden truncate sm:inline'>
+            {ADMIN_WEEK_LABEL} • {ADMIN_WEEK_RANGE}
+          </span>
+          <span className='truncate sm:hidden'>{ADMIN_WEEK_LABEL}</span>
         </div>
       </div>
 
-      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-        {filtered.map((project) => (
-          <article
-            key={project.id}
-            className={cn(
-              'flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm',
-              'transition-shadow hover:shadow-md',
-              'dark:border-slate-700 dark:bg-[#1E293B]'
-            )}
-          >
-            <div className='flex flex-col items-center text-center'>
-              <PlaceholderImage
-                label='Logo'
-                rounded='lg'
-                className='size-14 sm:size-16'
-              />
-              <h2 className='mt-4 text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
-                {project.name}
-              </h2>
-              <p className='mt-1 text-xs text-[#64748B] dark:text-[#94A3B8]'>
-                {project.updates} updates this week
-              </p>
-            </div>
-
-            <Link
-              to='/admin/week-updates/$projectId'
-              params={{ projectId: project.id }}
+      {isLoading ? (
+        <div className='flex items-center justify-center py-16'>
+          <Loader2 className='size-6 animate-spin text-slate-400' />
+        </div>
+      ) : (
+        <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
+          {filtered.map((project) => (
+            <article
+              key={project.id}
               className={cn(
-                'mt-5 flex items-center justify-center gap-1.5 text-sm font-semibold text-[#7C3AED]',
-                'hover:underline dark:text-violet-300'
+                'flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm',
+                'transition-shadow hover:shadow-md',
+                'dark:border-slate-700 dark:bg-[#1E293B]'
               )}
             >
-              View updates
-              <ArrowRight className='size-4' />
-            </Link>
-          </article>
-        ))}
-      </div>
+              <div className='flex flex-col items-center text-center'>
+                <span
+                  className={cn(
+                    'flex size-14 items-center justify-center rounded-2xl text-base font-bold text-white sm:size-16',
+                    project.color || 'bg-violet-500'
+                  )}
+                >
+                  {getDisplayNameInitials(project.name)}
+                </span>
+                <h2 className='mt-4 text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
+                  {project.name}
+                </h2>
+                <p className='mt-1 text-xs text-[#64748B] dark:text-[#94A3B8]'>
+                  0 updates this week
+                </p>
+              </div>
 
-      {filtered.length === 0 && (
+              <Link
+                to='/admin/week-updates/$projectId'
+                params={{ projectId: project.id }}
+                className={cn(
+                  'mt-5 flex items-center justify-center gap-1.5 text-sm font-semibold text-[#7C3AED]',
+                  'hover:underline dark:text-violet-300'
+                )}
+              >
+                View updates
+                <ArrowRight className='size-4' />
+              </Link>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && filtered.length === 0 && (
         <p className='py-16 text-center text-sm text-[#64748B] dark:text-[#94A3B8]'>
-          No projects match your search.
+          {projects.length === 0
+            ? 'No projects yet — add projects from the Projects page first.'
+            : 'No projects match your search.'}
         </p>
       )}
     </AdminShell>

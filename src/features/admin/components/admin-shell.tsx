@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import {
+  endOfWeek,
+  format,
+  getISOWeek,
+  startOfWeek,
+} from 'date-fns'
+import {
   CalendarDays,
   ChevronDown,
   FolderKanban,
@@ -17,8 +23,10 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
 import { useAuthStore } from '@/stores/auth-store'
 
-export const ADMIN_WEEK_LABEL = 'Week 26'
-export const ADMIN_WEEK_RANGE = 'Jun 22 – Jun 28, 2026'
+const NOW = new Date()
+
+export const ADMIN_WEEK_LABEL = `Week ${getISOWeek(NOW)}`
+export const ADMIN_WEEK_RANGE = `${format(startOfWeek(NOW, { weekStartsOn: 1 }), 'MMM d')} – ${format(endOfWeek(NOW, { weekStartsOn: 1 }), 'MMM d, yyyy')}`
 
 type AdminNavKey =
   | 'dashboard'
