@@ -29,3 +29,20 @@ export {
   subscribeToCategories,
   DEFAULT_CATEGORIES,
 } from './categories'
+export {
+  deleteAsset,
+  fileTypeLabel,
+  formatFileSize,
+  MAX_FILE_SIZE_BYTES,
+  subscribeToAllAssets,
+  subscribeToMyAssets,
+  updateAssetTags,
+  uploadAsset,
+} from './assets'
+export {
+  createUpdate,
+  deleteUpdate,
+  subscribeToAllUpdates,
+  subscribeToMyUpdates,
+  updateUpdateTags,
+} from './updates'

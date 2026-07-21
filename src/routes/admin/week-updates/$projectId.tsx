@@ -26,5 +26,7 @@ function ProjectWeekUpdatesRoute() {
     return <NotFoundError />
   }
 
-  return <WeekUpdatesDetailPage projectName={project.name} />
+  return (
+    <WeekUpdatesDetailPage projectId={project.id} projectName={project.name} />
+  )
 }

@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { startOfWeek } from 'date-fns'
+import { Timestamp } from 'firebase/firestore'
 import { ArrowRight, CalendarDays, Loader2, Search } from 'lucide-react'
 import { cn, getDisplayNameInitials } from '@/lib/utils'
-import { useProjects } from '@/hooks/use-live-data'
+import {
+  useAllAssets,
+  useAllUpdates,
+  useProjects,
+} from '@/hooks/use-live-data'
 import {
   ADMIN_WEEK_LABEL,
   ADMIN_WEEK_RANGE,
@@ -10,9 +16,26 @@ import {
 } from '@/features/admin/components/admin-shell'
 import { Input } from '@/components/ui/input'
 
+function isThisWeek(createdAt: unknown): boolean {
+  if (!(createdAt instanceof Timestamp)) return false
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 })
+  return createdAt.toDate() >= weekStart
+}
+
 export function AdminWeekUpdatesPage() {
   const { projects, isLoading } = useProjects()
+  const { assets } = useAllAssets()
+  const { updates } = useAllUpdates()
   const [search, setSearch] = useState('')
+
+  const countsByProject = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const item of [...assets, ...updates]) {
+      if (!item.projectId || !isThisWeek(item.createdAt)) continue
+      counts.set(item.projectId, (counts.get(item.projectId) ?? 0) + 1)
+    }
+    return counts
+  }, [assets, updates])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -27,7 +50,7 @@ export function AdminWeekUpdatesPage() {
           Week Updates
         </h1>
         <p className='text-sm text-[#64748B] dark:text-[#94A3B8]'>
-          Select a project to view weekly updates by team members.
+          Select a project to view updates by team members.
         </p>
       </div>
 
@@ -62,45 +85,48 @@ export function AdminWeekUpdatesPage() {
         </div>
       ) : (
         <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-3'>
-          {filtered.map((project) => (
-            <article
-              key={project.id}
-              className={cn(
-                'flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm',
-                'transition-shadow hover:shadow-md',
-                'dark:border-slate-700 dark:bg-[#1E293B]'
-              )}
-            >
-              <div className='flex flex-col items-center text-center'>
-                <span
-                  className={cn(
-                    'flex size-14 items-center justify-center rounded-2xl text-base font-bold text-white sm:size-16',
-                    project.color || 'bg-violet-500'
-                  )}
-                >
-                  {getDisplayNameInitials(project.name)}
-                </span>
-                <h2 className='mt-4 text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
-                  {project.name}
-                </h2>
-                <p className='mt-1 text-xs text-[#64748B] dark:text-[#94A3B8]'>
-                  0 updates this week
-                </p>
-              </div>
-
-              <Link
-                to='/admin/week-updates/$projectId'
-                params={{ projectId: project.id }}
+          {filtered.map((project) => {
+            const count = countsByProject.get(project.id) ?? 0
+            return (
+              <article
+                key={project.id}
                 className={cn(
-                  'mt-5 flex items-center justify-center gap-1.5 text-sm font-semibold text-[#7C3AED]',
-                  'hover:underline dark:text-violet-300'
+                  'flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm',
+                  'transition-shadow hover:shadow-md',
+                  'dark:border-slate-700 dark:bg-[#1E293B]'
                 )}
               >
-                View updates
-                <ArrowRight className='size-4' />
-              </Link>
-            </article>
-          ))}
+                <div className='flex flex-col items-center text-center'>
+                  <span
+                    className={cn(
+                      'flex size-14 items-center justify-center rounded-2xl text-base font-bold text-white sm:size-16',
+                      project.color || 'bg-violet-500'
+                    )}
+                  >
+                    {getDisplayNameInitials(project.name)}
+                  </span>
+                  <h2 className='mt-4 text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC]'>
+                    {project.name}
+                  </h2>
+                  <p className='mt-1 text-xs text-[#64748B] dark:text-[#94A3B8]'>
+                    {count} update{count === 1 ? '' : 's'} this week
+                  </p>
+                </div>
+
+                <Link
+                  to='/admin/week-updates/$projectId'
+                  params={{ projectId: project.id }}
+                  className={cn(
+                    'mt-5 flex items-center justify-center gap-1.5 text-sm font-semibold text-[#7C3AED]',
+                    'hover:underline dark:text-violet-300'
+                  )}
+                >
+                  View updates
+                  <ArrowRight className='size-4' />
+                </Link>
+              </article>
+            )
+          })}
         </div>
       )}
 
