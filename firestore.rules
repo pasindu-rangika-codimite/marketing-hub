@@ -66,9 +66,9 @@ service cloud.firestore {
 
     // ── Assets (uploaded file metadata) ──────────────────────────────────
     match /assets/{assetId} {
-      allow read: if isApproved();
+      allow read: if isAdmin() || isApproved();
 
-      allow create: if isApproved()
+      allow create: if (isAdmin() || isApproved())
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update, delete: if isAdmin()
@@ -77,9 +77,9 @@ service cloud.firestore {
 
     // ── Daily updates ────────────────────────────────────────────────────
     match /updates/{updateId} {
-      allow read: if isApproved();
+      allow read: if isAdmin() || isApproved();
 
-      allow create: if isApproved()
+      allow create: if (isAdmin() || isApproved())
         && request.resource.data.ownerUid == request.auth.uid;
 
       allow update, delete: if isAdmin()

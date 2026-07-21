@@ -29,9 +29,10 @@ service firebase.storage {
     }
 
     match /assets/{ownerUid}/{assetId}/{fileName} {
-      allow read: if isApproved();
+      // Admins qualify by verified email alone (no Firestore lookup needed).
+      allow read: if isAdmin() || isApproved();
 
-      allow write: if isApproved()
+      allow write: if (isAdmin() || isApproved())
         && request.auth.uid == ownerUid
         && request.resource.size < 50 * 1024 * 1024;
 
