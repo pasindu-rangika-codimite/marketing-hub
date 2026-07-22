@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios'
+import { FirebaseError } from 'firebase/app'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { handleServerError } from './handle-server-error'
 
@@ -21,44 +21,18 @@ describe('handleServerError', () => {
     expect(toastError).toHaveBeenCalledWith('Something went wrong!')
   })
 
-  it('maps a plain object with status 204 to the no-content message', () => {
-    handleServerError({ status: 204 })
+  it('maps a known Firebase error code to a friendly message', () => {
+    handleServerError(
+      new FirebaseError('permission-denied', 'Missing or insufficient permissions.')
+    )
 
-    expect(toastError).toHaveBeenCalledWith('No content.')
+    expect(toastError).toHaveBeenCalledWith(
+      'You do not have permission to do that.'
+    )
   })
 
-  it('prefers the API title when the error is an Axios error with response data', () => {
-    const error = new AxiosError('Bad request')
-    error.response = {
-      status: 422,
-      data: { title: 'Validation failed' },
-    } as AxiosError['response']
-
-    handleServerError(error)
-
-    expect(toastError).toHaveBeenCalledWith('Validation failed')
-  })
-
-  it('falls back to the generic message when Axios response has no data.title', () => {
-    const error = new AxiosError('Request failed')
-    error.response = {
-      status: 500,
-      data: {},
-    } as AxiosError['response']
-
-    handleServerError(error)
-
-    expect(toastError).toHaveBeenCalledWith('Something went wrong!')
-  })
-
-  it('falls back to the generic message when Axios data.title is an empty string', () => {
-    const error = new AxiosError('Bad request')
-    error.response = {
-      status: 400,
-      data: { title: '' },
-    } as AxiosError['response']
-
-    handleServerError(error)
+  it('falls back to the generic message for unknown Firebase codes', () => {
+    handleServerError(new FirebaseError('some/unknown-code', 'boom'))
 
     expect(toastError).toHaveBeenCalledWith('Something went wrong!')
   })

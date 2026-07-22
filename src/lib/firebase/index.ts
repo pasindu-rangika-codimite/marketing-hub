@@ -1,4 +1,3 @@
-export { firebaseApp, auth, db, storage } from './config'
 export {
   DomainNotAllowedError,
   isAllowedEmail,
@@ -6,10 +5,8 @@ export {
   signOutUser,
   subscribeToAuthChanges,
 } from './auth'
-export { COLLECTIONS } from './firestore'
 export {
   ensureUserProfile,
-  getUserProfile,
   setUserStatus,
   subscribeToAllUsers,
   subscribeToUserProfile,
@@ -27,13 +24,10 @@ export {
   deleteCategory,
   renameCategory,
   subscribeToCategories,
-  DEFAULT_CATEGORIES,
 } from './categories'
 export {
   deleteAsset,
-  fileTypeLabel,
   formatFileSize,
-  MAX_FILE_SIZE_BYTES,
   subscribeToAllAssets,
   subscribeToMyAssets,
   updateAssetTags,

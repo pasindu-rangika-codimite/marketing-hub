@@ -61,13 +61,17 @@ export function MyUpdatesPage() {
   const [uploading, setUploading] = useState<UploadProgress[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Items whose serverTimestamp hasn't resolved yet sort to the top.
+  const createdMillis = (createdAt: unknown) =>
+    createdAt instanceof Timestamp
+      ? createdAt.toMillis()
+      : Number.MAX_SAFE_INTEGER
+
   const sortedAssets = useMemo(
     () =>
-      [...assets].sort((a, b) => {
-        const ta = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : Date.now()
-        const tb = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : Date.now()
-        return tb - ta
-      }),
+      [...assets].sort(
+        (a, b) => createdMillis(b.createdAt) - createdMillis(a.createdAt)
+      ),
     [assets]
   )
 
@@ -75,11 +79,9 @@ export function MyUpdatesPage() {
     () =>
       [...updates]
         .filter((u) => u.linkUrl)
-        .sort((a, b) => {
-          const ta = a.createdAt instanceof Timestamp ? a.createdAt.toMillis() : Date.now()
-          const tb = b.createdAt instanceof Timestamp ? b.createdAt.toMillis() : Date.now()
-          return tb - ta
-        }),
+        .sort(
+          (a, b) => createdMillis(b.createdAt) - createdMillis(a.createdAt)
+        ),
     [updates]
   )
 

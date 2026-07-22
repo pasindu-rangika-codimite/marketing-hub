@@ -66,8 +66,10 @@ export function HomePage() {
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const today = new Date()
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 })
+  const { today, weekStart } = useMemo(() => {
+    const now = new Date()
+    return { today: now, weekStart: startOfWeek(now, { weekStartsOn: 1 }) }
+  }, [])
 
   const weekAssets = useMemo(
     () => assets.filter((a) => createdThisWeek(a.createdAt, weekStart)),

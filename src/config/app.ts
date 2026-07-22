@@ -9,7 +9,7 @@ export const ALLOWED_EMAIL_DOMAIN = 'codimite.com'
  * firestore.rules and storage.rules — the rules are the real enforcement;
  * this list only controls what the UI shows.
  */
-export const ADMIN_EMAILS = [
+const ADMIN_EMAILS = [
   'pawanya.thrimawithana@codimite.com',
   'pasindu.wijegunawardhana@codimite.com',
 ]
