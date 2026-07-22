@@ -35,3 +35,6 @@ dist-ssr
 
 # Firebase deploy cache
 .firebase/
+
+# TanStack Router temp/scratch files
+.tanstack/
